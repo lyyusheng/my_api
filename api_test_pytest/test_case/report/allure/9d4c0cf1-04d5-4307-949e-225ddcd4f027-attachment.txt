@@ -1,0 +1,4 @@
+INFO     api_log:my_log.py:29 -----正在测试register模块里面第2条测试用例：不输入手机号,
+INFO     api_log:my_log.py:29 测试数据是：{'mobilephone':'','pwd':'12345679'}
+INFO     api_log:my_log.py:29 实际结果是:{'status': 0, 'code': '20103', 'data': None, 'msg': '手机号不能为空'}
+INFO     api_log:my_log.py:29 一条测试用例执行完毕

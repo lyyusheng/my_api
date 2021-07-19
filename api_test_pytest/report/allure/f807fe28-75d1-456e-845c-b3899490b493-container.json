@@ -1,0 +1,1 @@
+{"uuid": "fee98da8-f42c-4a47-9459-8fd16fac3d13", "children": ["08c25f9b-bd54-4976-b942-0663ec666298"], "befores": [{"name": "add_loan_setup", "status": "passed", "start": 1626701987267, "stop": 1626701987267}], "afters": [{"name": "add_loan_setup::0", "status": "passed", "start": 1626701987574, "stop": 1626701987576}], "start": 1626701987267, "stop": 1626701987576}

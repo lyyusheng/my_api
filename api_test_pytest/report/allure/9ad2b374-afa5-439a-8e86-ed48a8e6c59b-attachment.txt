@@ -1,0 +1,4 @@
+[32mINFO    [0m api_log:my_log.py:29 -------正在测试add_loan模块里面第2条测试用例：加标
+[32mINFO    [0m api_log:my_log.py:29 测试数据是：{'CaseId': 2, 'Module': 'add_loan', 'Title': '加标', 'Method': 'GET', 'Url': 'http://192.168.153.129:8080/futureloan/mvc/api/loan/add', 'Params': "{'memberId':'#normal_member_id#','title':'借钱修别墅啦','amount':100000,'loanRate':18.0,'loanTerm':30,'loanDateType':2,'repaymemtWay':5,'biddingDays':5}", 'sql': "{'sql':'select max(Id) from loan where MemberID=81'}", 'ExpectedResult': '{"status" :1,"code":"10001","data":null,"msg":"加标成功"}', 'ActualResult': '{"status":1,"code":"10001","data":null,"msg":"加标成功"}'}
+[32mINFO    [0m api_log:my_log.py:29 实际结果：{'status': 1, 'code': '10001', 'data': None, 'msg': '加标成功'}
+[32mINFO    [0m api_log:my_log.py:29 一条测试用例执行完毕

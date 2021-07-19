@@ -1,0 +1,1 @@
+{'memberId': '81', 'title': '借钱修别墅啦', 'amount': 100000, 'loanRate': 18.0, 'loanTerm': 30, 'loanDateType': 2, 'repaymemtWay': 5, 'biddingDays': 5}

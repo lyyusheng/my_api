@@ -1,0 +1,2 @@
+INFO     api_log:my_log.py:29 -----正在测试register模块里面第6条测试用例：不输入用户名,
+INFO     api_log:my_log.py:29 测试数据是：{'mobilephone':'18300071089','pwd':'12345678','regname':''}

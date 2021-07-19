@@ -1,0 +1,4 @@
+[32mINFO    [0m api_log:my_log.py:29 -------正在测试audit模块里面第3条测试用例：审核到4状态
+[32mINFO    [0m api_log:my_log.py:29 测试数据是：{'CaseId': 3, 'Module': 'audit', 'Title': '审核到4状态', 'Method': 'GET', 'Url': 'http://192.168.153.129:8080/futureloan/mvc/api/loan/audit', 'Params': '{"id":"#loan_id#","status":"4"}', 'sql': None, 'ExpectedResult': '{"status" :1,"code":"10001","data":null,"msg":"更新状态成功：竞标开始，当前标为竞标中状态"}', 'ActualResult': '{"status":1,"code":"10001","data":null,"msg":"更新状态成功：竞标开始，当前标为竞标中状态"}'}
+[32mINFO    [0m api_log:my_log.py:29 实际结果：{'status': 1, 'code': '10001', 'data': None, 'msg': '更新状态成功：竞标开始，当前标为竞标中状态'}
+[32mINFO    [0m api_log:my_log.py:29 一条测试用例执行完毕

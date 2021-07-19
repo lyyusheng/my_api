@@ -1,0 +1,4 @@
+[32mINFO    [0m api_log:my_log.py:29 -----正在测试register模块里面第6条测试用例：不输入用户名,
+[32mINFO    [0m api_log:my_log.py:29 测试数据是：{'mobilephone':'18300071085','pwd':'12345678','regname':''}
+[32mINFO    [0m api_log:my_log.py:29 实际结果是:{'status': 1, 'code': '10001', 'data': None, 'msg': '注册成功'}
+[32mINFO    [0m api_log:my_log.py:29 一条测试用例执行完毕

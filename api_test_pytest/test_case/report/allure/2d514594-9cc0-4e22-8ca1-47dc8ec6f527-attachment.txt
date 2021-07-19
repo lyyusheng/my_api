@@ -1,0 +1,4 @@
+2021-07-19 04:03:39,253-[INFO]-my_log.py-api_log-日志信息:-------正在测试login模块里面第1条测试用例：正常登录
+2021-07-19 04:03:39,268-[INFO]-my_log.py-api_log-日志信息:测试数据是：{'CaseId': 1, 'Module': 'login', 'Title': '正常登录', 'Method': 'GET', 'Url': 'http://192.168.153.129:8080/futureloan/mvc/api/member/login', 'Params': '{"mobilephone":"#normal_usr#","pwd":"#normal_pwd#"}', 'sql': None, 'ExpectedResult': '{"status" :1,"code":"10001","data":null,"msg":"登录成功"}', 'ActualResult': '{"status":1,"code":"10001","data":null,"msg":"登录成功"}'}
+2021-07-19 04:03:53,740-[INFO]-my_log.py-api_log-日志信息:实际结果：{'status': 1, 'code': '10001', 'data': None, 'msg': '登录成功'}
+2021-07-19 04:03:53,810-[INFO]-my_log.py-api_log-日志信息:一条测试用例执行完毕

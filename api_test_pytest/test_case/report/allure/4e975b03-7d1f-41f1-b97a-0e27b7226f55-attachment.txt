@@ -1,0 +1,4 @@
+2021-07-19 20:43:55,742-[INFO]-my_log.py-api_log-日志信息:-------正在测试add_loan模块里面第2条测试用例：加标
+2021-07-19 20:43:55,743-[INFO]-my_log.py-api_log-日志信息:测试数据是：{'CaseId': 2, 'Module': 'add_loan', 'Title': '加标', 'Method': 'GET', 'Url': 'http://192.168.153.129:8080/futureloan/mvc/api/loan/add', 'Params': "{'memberId':'#normal_member_id#','title':'借钱修别墅啦','amount':100000,'loanRate':18.0,'loanTerm':30,'loanDateType':2,'repaymemtWay':5,'biddingDays':5}", 'sql': "{'sql':'select max(Id) from loan where MemberID=81'}", 'ExpectedResult': '{"status" :1,"code":"10001","data":null,"msg":"加标成功"}', 'ActualResult': '{"status":1,"code":"10001","data":null,"msg":"加标成功"}'}
+2021-07-19 20:43:56,018-[INFO]-my_log.py-api_log-日志信息:实际结果：{'status': 1, 'code': '10001', 'data': None, 'msg': '加标成功'}
+2021-07-19 20:43:56,020-[INFO]-my_log.py-api_log-日志信息:一条测试用例执行完毕

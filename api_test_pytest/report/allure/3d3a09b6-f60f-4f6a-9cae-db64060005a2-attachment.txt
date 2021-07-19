@@ -1,0 +1,3 @@
+[32mINFO    [0m api_log:my_log.py:29 -------正在测试recharge模块里面第3条测试用例：不输入金额
+[32mINFO    [0m api_log:my_log.py:29 测试数据是：{'CaseId': 3, 'Module': 'recharge', 'Title': '不输入金额', 'Method': 'GET', 'Url': 'http://192.168.153.129:8080/futureloan/mvc/api/member/bidLoan', 'Params': '{"memberId":"287324","password":"12345678"," loanId":140029,"amount":""}', 'sql': None, 'ExpectedResult': '{"status":0,"code":"11003","data":null,"msg":"参数错误:所有参数都不能为空"}', 'ActualResult': '{"status":0,"code":"11003","data":null,"msg":"参数错误:所有参数都不能为空"}'}
+[32mINFO    [0m api_log:my_log.py:29 一条测试用例执行完毕

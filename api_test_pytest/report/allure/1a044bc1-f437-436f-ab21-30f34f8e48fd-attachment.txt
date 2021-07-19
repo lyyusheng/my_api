@@ -1,0 +1,4 @@
+[32mINFO    [0m api_log:my_log.py:29 -----正在测试login模块里面第5条测试用例：不输入手机号,
+[32mINFO    [0m api_log:my_log.py:29 测试数据是：{'mobilephone': '', 'pwd': '123456'}
+[32mINFO    [0m api_log:my_log.py:29 实际结果是:{'status': 0, 'code': '20103', 'data': None, 'msg': '手机号不能为空'}
+[32mINFO    [0m api_log:my_log.py:29 一条测试用例执行完毕

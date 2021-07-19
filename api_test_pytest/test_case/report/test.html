@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>Test Report</title>
+    <link href="assets/style.css" rel="stylesheet" type="text/css"/></head>
+  <body onLoad="init()">
+    <script>/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+ * You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+
+function toArray(iter) {
+    if (iter === null) {
+        return null;
+    }
+    return Array.prototype.slice.call(iter);
+}
+
+function find(selector, elem) { // eslint-disable-line no-redeclare
+    if (!elem) {
+        elem = document;
+    }
+    return elem.querySelector(selector);
+}
+
+function findAll(selector, elem) {
+    if (!elem) {
+        elem = document;
+    }
+    return toArray(elem.querySelectorAll(selector));
+}
+
+function sortColumn(elem) {
+    toggleSortStates(elem);
+    const colIndex = toArray(elem.parentNode.childNodes).indexOf(elem);
+    let key;
+    if (elem.classList.contains('result')) {
+        key = keyResult;
+    } else if (elem.classList.contains('links')) {
+        key = keyLink;
+    } else {
+        key = keyAlpha;
+    }
+    sortTable(elem, key(colIndex));
+}
+
+function showAllExtras() { // eslint-disable-line no-unused-vars
+    findAll('.col-result').forEach(showExtras);
+}
+
+function hideAllExtras() { // eslint-disable-line no-unused-vars
+    findAll('.col-result').forEach(hideExtras);
+}
+
+function showExtras(colresultElem) {
+    const extras = colresultElem.parentNode.nextElementSibling;
+    const expandcollapse = colresultElem.firstElementChild;
+    extras.classList.remove('collapsed');
+    expandcollapse.classList.remove('expander');
+    expandcollapse.classList.add('collapser');
+}
+
+function hideExtras(colresultElem) {
+    const extras = colresultElem.parentNode.nextElementSibling;
+    const expandcollapse = colresultElem.firstElementChild;
+    extras.classList.add('collapsed');
+    expandcollapse.classList.remove('collapser');
+    expandcollapse.classList.add('expander');
+}
+
+function showFilters() {
+    const filterItems = document.getElementsByClassName('filter');
+    for (let i = 0; i < filterItems.length; i++)
+        filterItems[i].hidden = false;
+}
+
+function addCollapse() {
+    // Add links for show/hide all
+    const resulttable = find('table#results-table');
+    const showhideall = document.createElement('p');
+    showhideall.innerHTML = '<a href="javascript:showAllExtras()">Show all details</a> / ' +
+                            '<a href="javascript:hideAllExtras()">Hide all details</a>';
+    resulttable.parentElement.insertBefore(showhideall, resulttable);
+
+    // Add show/hide link to each result
+    findAll('.col-result').forEach(function(elem) {
+        const collapsed = getQueryParameter('collapsed') || 'Passed';
+        const extras = elem.parentNode.nextElementSibling;
+        const expandcollapse = document.createElement('span');
+        if (extras.classList.contains('collapsed')) {
+            expandcollapse.classList.add('expander');
+        } else if (collapsed.includes(elem.innerHTML)) {
+            extras.classList.add('collapsed');
+            expandcollapse.classList.add('expander');
+        } else {
+            expandcollapse.classList.add('collapser');
+        }
+        elem.appendChild(expandcollapse);
+
+        elem.addEventListener('click', function(event) {
+            if (event.currentTarget.parentNode.nextElementSibling.classList.contains('collapsed')) {
+                showExtras(event.currentTarget);
+            } else {
+                hideExtras(event.currentTarget);
+            }
+        });
+    });
+}
+
+function getQueryParameter(name) {
+    const match = RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
+    return match && decodeURIComponent(match[1].replace(/\+/g, ' '));
+}
+
+function init () { // eslint-disable-line no-unused-vars
+    resetSortHeaders();
+
+    addCollapse();
+
+    showFilters();
+
+    sortColumn(find('.initial-sort'));
+
+    findAll('.sortable').forEach(function(elem) {
+        elem.addEventListener('click',
+            function() {
+                sortColumn(elem);
+            }, false);
+    });
+}
+
+function sortTable(clicked, keyFunc) {
+    const rows = findAll('.results-table-row');
+    const reversed = !clicked.classList.contains('asc');
+    const sortedRows = sort(rows, keyFunc, reversed);
+    /* Whole table is removed here because browsers acts much slower
+     * when appending existing elements.
+     */
+    const thead = document.getElementById('results-table-head');
+    document.getElementById('results-table').remove();
+    const parent = document.createElement('table');
+    parent.id = 'results-table';
+    parent.appendChild(thead);
+    sortedRows.forEach(function(elem) {
+        parent.appendChild(elem);
+    });
+    document.getElementsByTagName('BODY')[0].appendChild(parent);
+}
+
+function sort(items, keyFunc, reversed) {
+    const sortArray = items.map(function(item, i) {
+        return [keyFunc(item), i];
+    });
+
+    sortArray.sort(function(a, b) {
+        const keyA = a[0];
+        const keyB = b[0];
+
+        if (keyA == keyB) return 0;
+
+        if (reversed) {
+            return keyA < keyB ? 1 : -1;
+        } else {
+            return keyA > keyB ? 1 : -1;
+        }
+    });
+
+    return sortArray.map(function(item) {
+        const index = item[1];
+        return items[index];
+    });
+}
+
+function keyAlpha(colIndex) {
+    return function(elem) {
+        return elem.childNodes[1].childNodes[colIndex].firstChild.data.toLowerCase();
+    };
+}
+
+function keyLink(colIndex) {
+    return function(elem) {
+        const dataCell = elem.childNodes[1].childNodes[colIndex].firstChild;
+        return dataCell == null ? '' : dataCell.innerText.toLowerCase();
+    };
+}
+
+function keyResult(colIndex) {
+    return function(elem) {
+        const strings = ['Error', 'Failed', 'Rerun', 'XFailed', 'XPassed',
+            'Skipped', 'Passed'];
+        return strings.indexOf(elem.childNodes[1].childNodes[colIndex].firstChild.data);
+    };
+}
+
+function resetSortHeaders() {
+    findAll('.sort-icon').forEach(function(elem) {
+        elem.parentNode.removeChild(elem);
+    });
+    findAll('.sortable').forEach(function(elem) {
+        const icon = document.createElement('div');
+        icon.className = 'sort-icon';
+        icon.textContent = 'vvv';
+        elem.insertBefore(icon, elem.firstChild);
+        elem.classList.remove('desc', 'active');
+        elem.classList.add('asc', 'inactive');
+    });
+}
+
+function toggleSortStates(elem) {
+    //if active, toggle between asc and desc
+    if (elem.classList.contains('active')) {
+        elem.classList.toggle('asc');
+        elem.classList.toggle('desc');
+    }
+
+    //if inactive, reset all other functions and add ascending active
+    if (elem.classList.contains('inactive')) {
+        resetSortHeaders();
+        elem.classList.remove('inactive');
+        elem.classList.add('active');
+    }
+}
+
+function isAllRowsHidden(value) {
+    return value.hidden == false;
+}
+
+function filterTable(elem) { // eslint-disable-line no-unused-vars
+    const outcomeAtt = 'data-test-result';
+    const outcome = elem.getAttribute(outcomeAtt);
+    const classOutcome = outcome + ' results-table-row';
+    const outcomeRows = document.getElementsByClassName(classOutcome);
+
+    for(let i = 0; i < outcomeRows.length; i++){
+        outcomeRows[i].hidden = !elem.checked;
+    }
+
+    const rows = findAll('.results-table-row').filter(isAllRowsHidden);
+    const allRowsHidden = rows.length == 0 ? true : false;
+    const notFoundMessage = document.getElementById('not-found-message');
+    notFoundMessage.hidden = !allRowsHidden;
+}
+</script>
+    <h1>test.html</h1>
+    <p>Report generated on 19-Jul-2021 at 20:44:04 by <a href="https://pypi.python.org/pypi/pytest-html">pytest-html</a> v3.1.1</p>
+    <h2>Environment</h2>
+    <table id="environment">
+      <tr>
+        <td>Packages</td>
+        <td>{"pluggy": "0.13.1", "py": "1.10.0", "pytest": "6.2.4"}</td></tr>
+      <tr>
+        <td>Platform</td>
+        <td>Windows-10-10.0.19041-SP0</td></tr>
+      <tr>
+        <td>Plugins</td>
+        <td>{"allure-pytest": "2.9.42", "html": "3.1.1", "metadata": "1.11.0", "rerunfailures": "10.0"}</td></tr>
+      <tr>
+        <td>Python</td>
+        <td>3.8.4</td></tr></table>
+    <h2>Summary</h2>
+    <p>20 tests ran in 10.28 seconds. </p>
+    <p class="filter" hidden="true">(Un)check the boxes to filter the results.</p><input checked="true" class="filter" data-test-result="passed" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="passed">18 passed</span>, <input checked="true" class="filter" data-test-result="skipped" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="skipped">0 skipped</span>, <input checked="true" class="filter" data-test-result="failed" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="failed">2 failed</span>, <input checked="true" class="filter" data-test-result="error" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="error">0 errors</span>, <input checked="true" class="filter" data-test-result="xfailed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="xfailed">0 expected failures</span>, <input checked="true" class="filter" data-test-result="xpassed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="xpassed">0 unexpected passes</span>, <input checked="true" class="filter" data-test-result="rerun" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="rerun">0 rerun</span>
+    <h2>Results</h2>
+    <table id="results-table">
+      <thead id="results-table-head">
+        <tr>
+          <th class="sortable result initial-sort" col="result">Result</th>
+          <th class="sortable" col="name">Test</th>
+          <th class="sortable" col="duration">Duration</th>
+          <th class="sortable links" col="links">Links</th></tr>
+        <tr hidden="true" id="not-found-message">
+          <th colspan="4">No results found. Try to check the filters</th></tr></thead>
+      <tbody class="failed results-table-row">
+        <tr>
+          <td class="col-result">Failed</td>
+          <td class="col-name">test_recharge.py::TestCase::test_recharge[case1]</td>
+          <td class="col-duration">0.66</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">self = &lt;api_test_pytest.test_case.test_recharge.TestCase object at 0x00000218A89D0880&gt;<br/>case = {&#x27;ActualResult&#x27;: &#x27;{&quot;status&quot;:1,&quot;code&quot;:&quot;10001&quot;,&quot;data&quot;:{&quot;id&quot;:81,&quot;regname&quot;:&quot;小蜜蜂&quot;,&quot;pwd&quot;:&quot;955178F66CBC8C8A7626ECFE3AB23ED0&quot;,...0070752&quot;,&quot;leaveamount&quot;:&quot;6276000.00&quot;,&quot;type&quot;:&quot;1&quot;,&quot;regtime&quot;:&quot;2020-01-15 16:19:51.0&quot;},&quot;msg&quot;:&quot;充值成功&quot;}&#x27;, &#x27;Method&#x27;: &#x27;GET&#x27;, ...}<br/>recharge_setup = &lt;common.do_excel.DoExcel object at 0x00000218A897AD00&gt;<br/><br/>    @pytest.mark.all<br/>    @pytest.mark.recharge<br/>    @pytest.mark.parametrize(&quot;case&quot;, test_data)<br/>    def test_recharge(self, case, recharge_setup):<br/>        t = recharge_setup<br/>        method = case[&quot;Method&quot;]<br/>        url = case[&quot;Url&quot;]<br/>        param = eval(get_data.re_p(case[&quot;Params&quot;]))<br/>        my_log.info(&#x27;-------正在测试{}模块里面第{}条测试用例：{}&#x27;.format(case[&#x27;Module&#x27;], case[&#x27;CaseId&#x27;], case[&#x27;Title&#x27;]))<br/>        my_log.info(&#x27;测试数据是：{}&#x27;.format(case))<br/>    <br/>        if case[&quot;sql&quot;] is not None:<br/>            sql = eval(case[&quot;sql&quot;])[&quot;sql&quot;]<br/>            before_amount = DoMysql().do_mysql(sql, 1)[0]<br/>    <br/>        res = HttpRequest().http_request(method, url, param, getattr(GetData, &quot;COOKIES&quot;))<br/>        if res.cookies:<br/>            setattr(GetData, &quot;COOKIES&quot;, res.cookies)<br/>    <br/>        if case[&quot;sql&quot;] is not None:<br/>            sql = eval(case[&quot;sql&quot;])[&quot;sql&quot;]<br/>            after_amount = DoMysql().do_mysql(sql, 1)[0]<br/>            recharge_amount = int(param[&quot;amount&quot;])<br/>            expect_amount = before_amount + recharge_amount<br/>            assert(expect_amount == after_amount)<br/>    <br/>        if case[&quot;ExpectedResult&quot;].find(&quot;exp_amount&quot;) &gt; -1:<br/>            # case[&quot;ExpectedResult&quot;].replace(&quot;exp_amount&quot;, str(expect_amount)) #错了<br/>            case[&#x27;ExpectedResult&#x27;] = case[&#x27;ExpectedResult&#x27;].replace(&#x27;exp_amount&#x27;, str(expect_amount))<br/>        try:<br/>            assert(json.loads(case[&quot;ExpectedResult&quot;]) == res.json())<br/>            TestResult = &quot;Pass&quot;<br/>        except AssertionError as e:<br/>            TestResult = &quot;Failed&quot;<br/>&gt;           raise e<br/><br/>test_recharge.py:53: <br/>_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _<br/><br/>self = &lt;api_test_pytest.test_case.test_recharge.TestCase object at 0x00000218A89D0880&gt;<br/>case = {&#x27;ActualResult&#x27;: &#x27;{&quot;status&quot;:1,&quot;code&quot;:&quot;10001&quot;,&quot;data&quot;:{&quot;id&quot;:81,&quot;regname&quot;:&quot;小蜜蜂&quot;,&quot;pwd&quot;:&quot;955178F66CBC8C8A7626ECFE3AB23ED0&quot;,...0070752&quot;,&quot;leaveamount&quot;:&quot;6276000.00&quot;,&quot;type&quot;:&quot;1&quot;,&quot;regtime&quot;:&quot;2020-01-15 16:19:51.0&quot;},&quot;msg&quot;:&quot;充值成功&quot;}&#x27;, &#x27;Method&#x27;: &#x27;GET&#x27;, ...}<br/>recharge_setup = &lt;common.do_excel.DoExcel object at 0x00000218A897AD00&gt;<br/><br/>    @pytest.mark.all<br/>    @pytest.mark.recharge<br/>    @pytest.mark.parametrize(&quot;case&quot;, test_data)<br/>    def test_recharge(self, case, recharge_setup):<br/>        t = recharge_setup<br/>        method = case[&quot;Method&quot;]<br/>        url = case[&quot;Url&quot;]<br/>        param = eval(get_data.re_p(case[&quot;Params&quot;]))<br/>        my_log.info(&#x27;-------正在测试{}模块里面第{}条测试用例：{}&#x27;.format(case[&#x27;Module&#x27;], case[&#x27;CaseId&#x27;], case[&#x27;Title&#x27;]))<br/>        my_log.info(&#x27;测试数据是：{}&#x27;.format(case))<br/>    <br/>        if case[&quot;sql&quot;] is not None:<br/>            sql = eval(case[&quot;sql&quot;])[&quot;sql&quot;]<br/>            before_amount = DoMysql().do_mysql(sql, 1)[0]<br/>    <br/>        res = HttpRequest().http_request(method, url, param, getattr(GetData, &quot;COOKIES&quot;))<br/>        if res.cookies:<br/>            setattr(GetData, &quot;COOKIES&quot;, res.cookies)<br/>    <br/>        if case[&quot;sql&quot;] is not None:<br/>            sql = eval(case[&quot;sql&quot;])[&quot;sql&quot;]<br/>            after_amount = DoMysql().do_mysql(sql, 1)[0]<br/>            recharge_amount = int(param[&quot;amount&quot;])<br/>            expect_amount = before_amount + recharge_amount<br/>            assert(expect_amount == after_amount)<br/>    <br/>        if case[&quot;ExpectedResult&quot;].find(&quot;exp_amount&quot;) &gt; -1:<br/>            # case[&quot;ExpectedResult&quot;].replace(&quot;exp_amount&quot;, str(expect_amount)) #错了<br/>            case[&#x27;ExpectedResult&#x27;] = case[&#x27;ExpectedResult&#x27;].replace(&#x27;exp_amount&#x27;, str(expect_amount))<br/>        try:<br/>&gt;           assert(json.loads(case[&quot;ExpectedResult&quot;]) == res.json())<br/><span class="error">E           AssertionError: assert {&#x27;code&#x27;: &#x27;100..., &#x27;status&#x27;: 1} == {&#x27;code&#x27;: &#x27;100..., &#x27;status&#x27;: 1}</span><br/><span class="error">E             Omitting 3 identical items, use -vv to show</span><br/><span class="error">E             Differing items:</span><br/><span class="error">E             {&#x27;data&#x27;: {&#x27;id&#x27;: 81, &#x27;leaveamount&#x27;: &#x27;6276000.00&#x27;, &#x27;mobilephone&#x27;: &#x27;18300070752&#x27;, &#x27;pwd&#x27;: &#x27;25D55AD283AA400AF464C76D713C07AD&#x27;, ...}} != {&#x27;data&#x27;: {&#x27;id&#x27;: 81, &#x27;leaveamount&#x27;: &#x27;6276000.00&#x27;, &#x27;mobilephone&#x27;: &#x27;18300070752&#x27;, &#x27;pwd&#x27;: &#x27;955178F66CBC8C8A7626ECFE3AB23ED0&#x27;, ...}}</span><br/><span class="error">E             Use -v to get the full diff</span><br/><br/>test_recharge.py:49: AssertionError<br/> ------------------------------Captured stderr call------------------------------ <br/>2021-07-19 20:44:00,144-[INFO]-my_log.py-api_log-日志信息:-------正在测试recharge模块里面第2条测试用例：正常充值
+2021-07-19 20:44:00,146-[INFO]-my_log.py-api_log-日志信息:测试数据是：{&#x27;CaseId&#x27;: 2, &#x27;Module&#x27;: &#x27;recharge&#x27;, &#x27;Title&#x27;: &#x27;正常充值&#x27;, &#x27;Method&#x27;: &#x27;GET&#x27;, &#x27;Url&#x27;: &#x27;http://192.168.153.129:8080/futureloan/mvc/api/member/recharge&#x27;, &#x27;Params&#x27;: &#x27;{&quot;mobilephone&quot;:&quot;18300070752&quot;,&quot;amount&quot;:&quot;300000&quot;}&#x27;, &#x27;sql&#x27;: &#x27;{\&#x27;sql\&#x27;:\&#x27;select LeaveAmount from member where MobilePhone = &quot;18300070752&quot; \&#x27;}&#x27;, &#x27;ExpectedResult&#x27;: &#x27;{&quot;status&quot;:1,&quot;code&quot;:&quot;10001&quot;,&quot;data&quot;:{&quot;id&quot;:81,&quot;regname&quot;:&quot;小蜜蜂&quot;,&quot;pwd&quot;:&quot;25D55AD283AA400AF464C76D713C07AD&quot;,&quot;mobilephone&quot;:&quot;18300070752&quot;,&quot;leaveamount&quot;:&quot;exp_amount&quot;,&quot;type&quot;:&quot;1&quot;,&quot;regtime&quot;:&quot;2020-01-15 16:19:51.0&quot;},&quot;msg&quot;:&quot;充值成功&quot;}&#x27;, &#x27;ActualResult&#x27;: &#x27;{&quot;status&quot;:1,&quot;code&quot;:&quot;10001&quot;,&quot;data&quot;:{&quot;id&quot;:81,&quot;regname&quot;:&quot;小蜜蜂&quot;,&quot;pwd&quot;:&quot;955178F66CBC8C8A7626ECFE3AB23ED0&quot;,&quot;mobilephone&quot;:&quot;18300070752&quot;,&quot;leaveamount&quot;:&quot;5977000.00&quot;,&quot;type&quot;:&quot;1&quot;,&quot;regtime&quot;:&quot;2021-07-08 11:01:10.0&quot;},&quot;msg&quot;:&quot;充值成功&quot;}&#x27;}
+<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     api_log:my_log.py:29 -------正在测试recharge模块里面第2条测试用例：正常充值
+INFO     api_log:my_log.py:29 测试数据是：{&#x27;CaseId&#x27;: 2, &#x27;Module&#x27;: &#x27;recharge&#x27;, &#x27;Title&#x27;: &#x27;正常充值&#x27;, &#x27;Method&#x27;: &#x27;GET&#x27;, &#x27;Url&#x27;: &#x27;http://192.168.153.129:8080/futureloan/mvc/api/member/recharge&#x27;, &#x27;Params&#x27;: &#x27;{&quot;mobilephone&quot;:&quot;18300070752&quot;,&quot;amount&quot;:&quot;300000&quot;}&#x27;, &#x27;sql&#x27;: &#x27;{\&#x27;sql\&#x27;:\&#x27;select LeaveAmount from member where MobilePhone = &quot;18300070752&quot; \&#x27;}&#x27;, &#x27;ExpectedResult&#x27;: &#x27;{&quot;status&quot;:1,&quot;code&quot;:&quot;10001&quot;,&quot;data&quot;:{&quot;id&quot;:81,&quot;regname&quot;:&quot;小蜜蜂&quot;,&quot;pwd&quot;:&quot;25D55AD283AA400AF464C76D713C07AD&quot;,&quot;mobilephone&quot;:&quot;18300070752&quot;,&quot;leaveamount&quot;:&quot;exp_amount&quot;,&quot;type&quot;:&quot;1&quot;,&quot;regtime&quot;:&quot;2020-01-15 16:19:51.0&quot;},&quot;msg&quot;:&quot;充值成功&quot;}&#x27;, &#x27;ActualResult&#x27;: &#x27;{&quot;status&quot;:1,&quot;code&quot;:&quot;10001&quot;,&quot;data&quot;:{&quot;id&quot;:81,&quot;regname&quot;:&quot;小蜜蜂&quot;,&quot;pwd&quot;:&quot;955178F66CBC8C8A7626ECFE3AB23ED0&quot;,&quot;mobilephone&quot;:&quot;18300070752&quot;,&quot;leaveamount&quot;:&quot;5977000.00&quot;,&quot;type&quot;:&quot;1&quot;,&quot;regtime&quot;:&quot;2021-07-08 11:01:10.0&quot;},&quot;msg&quot;:&quot;充值成功&quot;}&#x27;}<br/> ----------------------------Captured stderr teardown---------------------------- <br/>2021-07-19 20:44:00,868-[INFO]-my_log.py-api_log-日志信息:一条测试用例执行完毕
+<br/> -----------------------------Captured log teardown------------------------------ <br/>INFO     api_log:my_log.py:29 一条测试用例执行完毕<br/></div></td></tr></tbody>
+      <tbody class="failed results-table-row">
+        <tr>
+          <td class="col-result">Failed</td>
+          <td class="col-name">test_register.py::TestCase::test_register[case5]</td>
+          <td class="col-duration">0.53</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">self = &lt;api_test_pytest.test_case.test_register.TestCase object at 0x00000218A895FB50&gt;<br/>case = {&#x27;ActualResult&#x27;: &#x27;{&quot;status&quot;:1,&quot;code&quot;:&quot;10001&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;注册成功&quot;}&#x27;, &#x27;CaseId&#x27;: 6, &#x27;ExpectedResult&#x27;: &#x27;{&quot;status&quot;:1,&quot;code&quot;:&quot;10001&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;注册成功&quot;}&#x27;, &#x27;Method&#x27;: &#x27;GET&#x27;, ...}<br/>register_setup = &lt;common.do_excel.DoExcel object at 0x00000218A8C9EEB0&gt;<br/><br/>    @pytest.mark.register<br/>    @pytest.mark.all<br/>    @pytest.mark.parametrize(&quot;case&quot;, test_data)<br/>    def test_register(self, case, register_setup):<br/>        t = register_setup<br/>        method = case[&#x27;Method&#x27;]<br/>        url = case[&#x27;Url&#x27;]<br/>        param = eval(case[&#x27;Params&#x27;])  # 讀出來是個字符串，必須eval()變回原來字典類型<br/>        my_log.info(&#x27;-----正在测试{}模块里面第{}条测试用例：{},&#x27;.format(case[&#x27;Module&#x27;], case[&#x27;CaseId&#x27;], case[&#x27;Title&#x27;]))<br/>        my_log.info(&#x27;测试数据是：{}&#x27;.format(case[&#x27;Params&#x27;]))<br/>        res = HttpRequest().http_request(method, url, param, cookies=None)<br/>        try:<br/>            # self.assertEqual(case[&quot;ExpectedResult&quot;], res.text)<br/>            assert (json.loads(case[&quot;ExpectedResult&quot;]) == res.json())<br/>            test_result = &quot;Pass&quot;<br/>        except Exception as e:<br/>            my_log.error(&quot;http请求出错了，错误是：{}&quot;.format(e))<br/>            test_result = &quot;Failed&quot;<br/>            raise e  # 抛出错误，否则测试报告那里全部都是通过<br/>        finally:<br/>&gt;           t.write_back(case[&#x27;CaseId&#x27;] + 1, 9, res.text)  # 写回实际结果字符串类型不能用json，参数：行 列 实际结果<br/><br/>test_register.py:38: <br/>_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _<br/>..\common\do_excel.py:67: in write_back<br/>    wb.save(self.file_name)<br/>E:\PycharmProjects\AppTest\venv\lib\site-packages\openpyxl\workbook\workbook.py:408: in save<br/>    save_workbook(self, filename)<br/>E:\PycharmProjects\AppTest\venv\lib\site-packages\openpyxl\writer\excel.py:291: in save_workbook<br/>    archive = ZipFile(filename, &#x27;w&#x27;, ZIP_DEFLATED, allowZip64=True)<br/>_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _<br/><br/>self = &lt;zipfile.ZipFile [closed]&gt;<br/>file = &#x27;F:\\BaiduNetdiskWorkspace\\api_test_pytest\\test_case\\api_case_2.xlsx&#x27;<br/>mode = &#x27;w&#x27;, compression = 8, allowZip64 = True, compresslevel = None<br/><br/>    def __init__(self, file, mode=&quot;r&quot;, compression=ZIP_STORED, allowZip64=True,<br/>                 compresslevel=None, *, strict_timestamps=True):<br/>        &quot;&quot;&quot;Open the ZIP file with mode read &#x27;r&#x27;, write &#x27;w&#x27;, exclusive create &#x27;x&#x27;,<br/>        or append &#x27;a&#x27;.&quot;&quot;&quot;<br/>        if mode not in (&#x27;r&#x27;, &#x27;w&#x27;, &#x27;x&#x27;, &#x27;a&#x27;):<br/>            raise ValueError(&quot;ZipFile requires mode &#x27;r&#x27;, &#x27;w&#x27;, &#x27;x&#x27;, or &#x27;a&#x27;&quot;)<br/>    <br/>        _check_compression(compression)<br/>    <br/>        self._allowZip64 = allowZip64<br/>        self._didModify = False<br/>        self.debug = 0  # Level of printing: 0 through 3<br/>        self.NameToInfo = {}    # Find file info given name<br/>        self.filelist = []      # List of ZipInfo instances for archive<br/>        self.compression = compression  # Method of compression<br/>        self.compresslevel = compresslevel<br/>        self.mode = mode<br/>        self.pwd = None<br/>        self._comment = b&#x27;&#x27;<br/>        self._strict_timestamps = strict_timestamps<br/>    <br/>        # Check if we were passed a file-like object<br/>        if isinstance(file, os.PathLike):<br/>            file = os.fspath(file)<br/>        if isinstance(file, str):<br/>            # No, it&#x27;s a filename<br/>            self._filePassed = 0<br/>            self.filename = file<br/>            modeDict = {&#x27;r&#x27; : &#x27;rb&#x27;, &#x27;w&#x27;: &#x27;w+b&#x27;, &#x27;x&#x27;: &#x27;x+b&#x27;, &#x27;a&#x27; : &#x27;r+b&#x27;,<br/>                        &#x27;r+b&#x27;: &#x27;w+b&#x27;, &#x27;w+b&#x27;: &#x27;wb&#x27;, &#x27;x+b&#x27;: &#x27;xb&#x27;}<br/>            filemode = modeDict[mode]<br/>            while True:<br/>                try:<br/>&gt;                   self.fp = io.open(file, filemode)<br/><span class="error">E                   PermissionError: [Errno 13] Permission denied: &#x27;F:\\BaiduNetdiskWorkspace\\api_test_pytest\\test_case\\api_case_2.xlsx&#x27;</span><br/><br/>E:\Program Files\Python38\lib\zipfile.py:1251: PermissionErrorself = &lt;allure_commons._allure.fixture object at 0x00000218A8C7B430&gt;, args = ()<br/>kwargs = {}<br/><br/>    def __call__(self, *args, **kwargs):<br/>        self.parameters = func_parameters(self._fixture_function, *args, **kwargs)<br/>    <br/>        with self:<br/>&gt;           return self._fixture_function(*args, **kwargs)<br/><br/>E:\PycharmProjects\AppTest\venv\lib\site-packages\allure_commons\_allure.py:200: <br/>_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _<br/>conftest.py:35: in register_setup<br/>    my_log.info(&quot;一条测试用例执行完毕&quot;)<br/>..\common\my_log.py:44: in info<br/>    self.my_log(&#x27;INFO&#x27;, msg)<br/>..\common\my_log.py:18: in my_log<br/>    fh = logging.FileHandler(project_path.log_path, encoding=&#x27;utf-8&#x27;)  # 文件不存在时自动生成<br/>E:\Program Files\Python38\lib\logging\__init__.py:1143: in __init__<br/>    StreamHandler.__init__(self, self._open())<br/>_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _<br/><br/>self = &lt;[AttributeError(&quot;&#x27;FileHandler&#x27; object has no attribute &#x27;level&#x27;&quot;) raised in repr()] FileHandler object at 0x218a8aa3ac0&gt;<br/><br/>    def _open(self):<br/>        &quot;&quot;&quot;<br/>        Open the current base file with the (original) mode and encoding.<br/>        Return the resulting stream.<br/>        &quot;&quot;&quot;<br/>&gt;       return open(self.baseFilename, self.mode, encoding=self.encoding)<br/><span class="error">E       PermissionError: [Errno 13] Permission denied: &#x27;F:\\BaiduNetdiskWorkspace\\api_test_pytest\\test_result\\test.log&#x27;</span><br/><br/>E:\Program Files\Python38\lib\logging\__init__.py:1172: PermissionError<br/> ------------------------------Captured stderr call------------------------------ <br/>2021-07-19 20:44:03,129-[INFO]-my_log.py-api_log-日志信息:-----正在测试register模块里面第6条测试用例：不输入用户名,
+2021-07-19 20:44:03,284-[INFO]-my_log.py-api_log-日志信息:测试数据是：{&#x27;mobilephone&#x27;:&#x27;18300071089&#x27;,&#x27;pwd&#x27;:&#x27;12345678&#x27;,&#x27;regname&#x27;:&#x27;&#x27;}
+<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     api_log:my_log.py:29 -----正在测试register模块里面第6条测试用例：不输入用户名,
+INFO     api_log:my_log.py:29 测试数据是：{&#x27;mobilephone&#x27;:&#x27;18300071089&#x27;,&#x27;pwd&#x27;:&#x27;12345678&#x27;,&#x27;regname&#x27;:&#x27;&#x27;}<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_add_loan.py::TestCase::test_add_loan[case0]</td>
+          <td class="col-duration">0.36</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>{&#x27;mobilephone&#x27;: &#x27;18300070752&#x27;, &#x27;pwd&#x27;: &#x27;lys123456&#x27;}
+<br/> ------------------------------Captured stderr call------------------------------ <br/>2021-07-19 20:43:55,319-[INFO]-my_log.py-api_log-日志信息:-------正在测试login模块里面第1条测试用例：正常登录
+2021-07-19 20:43:55,320-[INFO]-my_log.py-api_log-日志信息:测试数据是：{&#x27;CaseId&#x27;: 1, &#x27;Module&#x27;: &#x27;login&#x27;, &#x27;Title&#x27;: &#x27;正常登录&#x27;, &#x27;Method&#x27;: &#x27;GET&#x27;, &#x27;Url&#x27;: &#x27;http://192.168.153.129:8080/futureloan/mvc/api/member/login&#x27;, &#x27;Params&#x27;: &#x27;{&quot;mobilephone&quot;:&quot;#normal_usr#&quot;,&quot;pwd&quot;:&quot;#normal_pwd#&quot;}&#x27;, &#x27;sql&#x27;: None, &#x27;ExpectedResult&#x27;: &#x27;{&quot;status&quot; :1,&quot;code&quot;:&quot;10001&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;登录成功&quot;}&#x27;, &#x27;ActualResult&#x27;: &#x27;{&quot;status&quot;:1,&quot;code&quot;:&quot;10001&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;登录成功&quot;}&#x27;}
+2021-07-19 20:43:55,546-[INFO]-my_log.py-api_log-日志信息:实际结果：{&#x27;status&#x27;: 1, &#x27;code&#x27;: &#x27;10001&#x27;, &#x27;data&#x27;: None, &#x27;msg&#x27;: &#x27;登录成功&#x27;}
+<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     api_log:my_log.py:29 -------正在测试login模块里面第1条测试用例：正常登录
+INFO     api_log:my_log.py:29 测试数据是：{&#x27;CaseId&#x27;: 1, &#x27;Module&#x27;: &#x27;login&#x27;, &#x27;Title&#x27;: &#x27;正常登录&#x27;, &#x27;Method&#x27;: &#x27;GET&#x27;, &#x27;Url&#x27;: &#x27;http://192.168.153.129:8080/futureloan/mvc/api/member/login&#x27;, &#x27;Params&#x27;: &#x27;{&quot;mobilephone&quot;:&quot;#normal_usr#&quot;,&quot;pwd&quot;:&quot;#normal_pwd#&quot;}&#x27;, &#x27;sql&#x27;: None, &#x27;ExpectedResult&#x27;: &#x27;{&quot;status&quot; :1,&quot;code&quot;:&quot;10001&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;登录成功&quot;}&#x27;, &#x27;ActualResult&#x27;: &#x27;{&quot;status&quot;:1,&quot;code&quot;:&quot;10001&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;登录成功&quot;}&#x27;}
+INFO     api_log:my_log.py:29 实际结果：{&#x27;status&#x27;: 1, &#x27;code&#x27;: &#x27;10001&#x27;, &#x27;data&#x27;: None, &#x27;msg&#x27;: &#x27;登录成功&#x27;}<br/> ----------------------------Captured stderr teardown---------------------------- <br/>2021-07-19 20:43:55,554-[INFO]-my_log.py-api_log-日志信息:一条测试用例执行完毕
+<br/> -----------------------------Captured log teardown------------------------------ <br/>INFO     api_log:my_log.py:29 一条测试用例执行完毕<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_add_loan.py::TestCase::test_add_loan[case1]</td>
+          <td class="col-duration">0.39</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>{&#x27;memberId&#x27;: &#x27;81&#x27;, &#x27;title&#x27;: &#x27;借钱修别墅啦&#x27;, &#x27;amount&#x27;: 100000, &#x27;loanRate&#x27;: 18.0, &#x27;loanTerm&#x27;: 30, &#x27;loanDateType&#x27;: 2, &#x27;repaymemtWay&#x27;: 5, &#x27;biddingDays&#x27;: 5}
+<br/> ------------------------------Captured stderr call------------------------------ <br/>2021-07-19 20:43:55,742-[INFO]-my_log.py-api_log-日志信息:-------正在测试add_loan模块里面第2条测试用例：加标
+2021-07-19 20:43:55,743-[INFO]-my_log.py-api_log-日志信息:测试数据是：{&#x27;CaseId&#x27;: 2, &#x27;Module&#x27;: &#x27;add_loan&#x27;, &#x27;Title&#x27;: &#x27;加标&#x27;, &#x27;Method&#x27;: &#x27;GET&#x27;, &#x27;Url&#x27;: &#x27;http://192.168.153.129:8080/futureloan/mvc/api/loan/add&#x27;, &#x27;Params&#x27;: &quot;{&#x27;memberId&#x27;:&#x27;#normal_member_id#&#x27;,&#x27;title&#x27;:&#x27;借钱修别墅啦&#x27;,&#x27;amount&#x27;:100000,&#x27;loanRate&#x27;:18.0,&#x27;loanTerm&#x27;:30,&#x27;loanDateType&#x27;:2,&#x27;repaymemtWay&#x27;:5,&#x27;biddingDays&#x27;:5}&quot;, &#x27;sql&#x27;: &quot;{&#x27;sql&#x27;:&#x27;select max(Id) from loan where MemberID=81&#x27;}&quot;, &#x27;ExpectedResult&#x27;: &#x27;{&quot;status&quot; :1,&quot;code&quot;:&quot;10001&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;加标成功&quot;}&#x27;, &#x27;ActualResult&#x27;: &#x27;{&quot;status&quot;:1,&quot;code&quot;:&quot;10001&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;加标成功&quot;}&#x27;}
+2021-07-19 20:43:56,018-[INFO]-my_log.py-api_log-日志信息:实际结果：{&#x27;status&#x27;: 1, &#x27;code&#x27;: &#x27;10001&#x27;, &#x27;data&#x27;: None, &#x27;msg&#x27;: &#x27;加标成功&#x27;}
+<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     api_log:my_log.py:29 -------正在测试add_loan模块里面第2条测试用例：加标
+INFO     api_log:my_log.py:29 测试数据是：{&#x27;CaseId&#x27;: 2, &#x27;Module&#x27;: &#x27;add_loan&#x27;, &#x27;Title&#x27;: &#x27;加标&#x27;, &#x27;Method&#x27;: &#x27;GET&#x27;, &#x27;Url&#x27;: &#x27;http://192.168.153.129:8080/futureloan/mvc/api/loan/add&#x27;, &#x27;Params&#x27;: &quot;{&#x27;memberId&#x27;:&#x27;#normal_member_id#&#x27;,&#x27;title&#x27;:&#x27;借钱修别墅啦&#x27;,&#x27;amount&#x27;:100000,&#x27;loanRate&#x27;:18.0,&#x27;loanTerm&#x27;:30,&#x27;loanDateType&#x27;:2,&#x27;repaymemtWay&#x27;:5,&#x27;biddingDays&#x27;:5}&quot;, &#x27;sql&#x27;: &quot;{&#x27;sql&#x27;:&#x27;select max(Id) from loan where MemberID=81&#x27;}&quot;, &#x27;ExpectedResult&#x27;: &#x27;{&quot;status&quot; :1,&quot;code&quot;:&quot;10001&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;加标成功&quot;}&#x27;, &#x27;ActualResult&#x27;: &#x27;{&quot;status&quot;:1,&quot;code&quot;:&quot;10001&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;加标成功&quot;}&#x27;}
+INFO     api_log:my_log.py:29 实际结果：{&#x27;status&#x27;: 1, &#x27;code&#x27;: &#x27;10001&#x27;, &#x27;data&#x27;: None, &#x27;msg&#x27;: &#x27;加标成功&#x27;}<br/> ----------------------------Captured stderr teardown---------------------------- <br/>2021-07-19 20:43:56,020-[INFO]-my_log.py-api_log-日志信息:一条测试用例执行完毕
+<br/> -----------------------------Captured log teardown------------------------------ <br/>INFO     api_log:my_log.py:29 一条测试用例执行完毕<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_add_loan.py::TestCase::test_add_loan[case2]</td>
+          <td class="col-duration">0.25</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>{&#x27;id&#x27;: &#x27;44&#x27;, &#x27;status&#x27;: &#x27;4&#x27;}
+<br/> ------------------------------Captured stderr call------------------------------ <br/>2021-07-19 20:43:56,187-[INFO]-my_log.py-api_log-日志信息:-------正在测试audit模块里面第3条测试用例：审核到4状态
+2021-07-19 20:43:56,188-[INFO]-my_log.py-api_log-日志信息:测试数据是：{&#x27;CaseId&#x27;: 3, &#x27;Module&#x27;: &#x27;audit&#x27;, &#x27;Title&#x27;: &#x27;审核到4状态&#x27;, &#x27;Method&#x27;: &#x27;GET&#x27;, &#x27;Url&#x27;: &#x27;http://192.168.153.129:8080/futureloan/mvc/api/loan/audit&#x27;, &#x27;Params&#x27;: &#x27;{&quot;id&quot;:&quot;#loan_id#&quot;,&quot;status&quot;:&quot;4&quot;}&#x27;, &#x27;sql&#x27;: None, &#x27;ExpectedResult&#x27;: &#x27;{&quot;status&quot; :1,&quot;code&quot;:&quot;10001&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;更新状态成功：竞标开始，当前标为竞标中状态&quot;}&#x27;, &#x27;ActualResult&#x27;: &#x27;{&quot;status&quot;:1,&quot;code&quot;:&quot;10001&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;更新状态成功：竞标开始，当前标为竞标中状态&quot;}&#x27;}
+2021-07-19 20:43:56,341-[INFO]-my_log.py-api_log-日志信息:实际结果：{&#x27;status&#x27;: 1, &#x27;code&#x27;: &#x27;10001&#x27;, &#x27;data&#x27;: None, &#x27;msg&#x27;: &#x27;更新状态成功：竞标开始，当前标为竞标中状态&#x27;}
+<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     api_log:my_log.py:29 -------正在测试audit模块里面第3条测试用例：审核到4状态
+INFO     api_log:my_log.py:29 测试数据是：{&#x27;CaseId&#x27;: 3, &#x27;Module&#x27;: &#x27;audit&#x27;, &#x27;Title&#x27;: &#x27;审核到4状态&#x27;, &#x27;Method&#x27;: &#x27;GET&#x27;, &#x27;Url&#x27;: &#x27;http://192.168.153.129:8080/futureloan/mvc/api/loan/audit&#x27;, &#x27;Params&#x27;: &#x27;{&quot;id&quot;:&quot;#loan_id#&quot;,&quot;status&quot;:&quot;4&quot;}&#x27;, &#x27;sql&#x27;: None, &#x27;ExpectedResult&#x27;: &#x27;{&quot;status&quot; :1,&quot;code&quot;:&quot;10001&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;更新状态成功：竞标开始，当前标为竞标中状态&quot;}&#x27;, &#x27;ActualResult&#x27;: &#x27;{&quot;status&quot;:1,&quot;code&quot;:&quot;10001&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;更新状态成功：竞标开始，当前标为竞标中状态&quot;}&#x27;}
+INFO     api_log:my_log.py:29 实际结果：{&#x27;status&#x27;: 1, &#x27;code&#x27;: &#x27;10001&#x27;, &#x27;data&#x27;: None, &#x27;msg&#x27;: &#x27;更新状态成功：竞标开始，当前标为竞标中状态&#x27;}<br/> ----------------------------Captured stderr teardown---------------------------- <br/>2021-07-19 20:43:56,343-[INFO]-my_log.py-api_log-日志信息:一条测试用例执行完毕
+<br/> -----------------------------Captured log teardown------------------------------ <br/>INFO     api_log:my_log.py:29 一条测试用例执行完毕<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_invest.py::TestCase::test_invest[case0]</td>
+          <td class="col-duration">0.23</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> ------------------------------Captured stderr call------------------------------ <br/>2021-07-19 20:43:56,488-[INFO]-my_log.py-api_log-日志信息:-------正在测试login模块里面第1条测试用例：正常登录
+2021-07-19 20:43:56,490-[INFO]-my_log.py-api_log-日志信息:测试数据是：{&#x27;CaseId&#x27;: 1, &#x27;Module&#x27;: &#x27;login&#x27;, &#x27;Title&#x27;: &#x27;正常登录&#x27;, &#x27;Method&#x27;: &#x27;GET&#x27;, &#x27;Url&#x27;: &#x27;http://192.168.153.129:8080/futureloan/mvc/api/member/login&#x27;, &#x27;Params&#x27;: &#x27;{&quot;mobilephone&quot;:&quot;18300070752&quot;,&quot;pwd&quot;:&quot;lys123456&quot;}&#x27;, &#x27;sql&#x27;: None, &#x27;ExpectedResult&#x27;: &#x27;{&quot;status&quot; :1,&quot;code&quot;:&quot;10001&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;登录成功&quot;}&#x27;, &#x27;ActualResult&#x27;: &#x27;{&quot;status&quot;:1,&quot;code&quot;:&quot;10001&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;登录成功&quot;}&#x27;}
+<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     api_log:my_log.py:29 -------正在测试login模块里面第1条测试用例：正常登录
+INFO     api_log:my_log.py:29 测试数据是：{&#x27;CaseId&#x27;: 1, &#x27;Module&#x27;: &#x27;login&#x27;, &#x27;Title&#x27;: &#x27;正常登录&#x27;, &#x27;Method&#x27;: &#x27;GET&#x27;, &#x27;Url&#x27;: &#x27;http://192.168.153.129:8080/futureloan/mvc/api/member/login&#x27;, &#x27;Params&#x27;: &#x27;{&quot;mobilephone&quot;:&quot;18300070752&quot;,&quot;pwd&quot;:&quot;lys123456&quot;}&#x27;, &#x27;sql&#x27;: None, &#x27;ExpectedResult&#x27;: &#x27;{&quot;status&quot; :1,&quot;code&quot;:&quot;10001&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;登录成功&quot;}&#x27;, &#x27;ActualResult&#x27;: &#x27;{&quot;status&quot;:1,&quot;code&quot;:&quot;10001&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;登录成功&quot;}&#x27;}<br/> ----------------------------Captured stderr teardown---------------------------- <br/>2021-07-19 20:43:56,591-[INFO]-my_log.py-api_log-日志信息:一条测试用例执行完毕
+<br/> -----------------------------Captured log teardown------------------------------ <br/>INFO     api_log:my_log.py:29 一条测试用例执行完毕<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_invest.py::TestCase::test_invest[case1]</td>
+          <td class="col-duration">0.85</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> ------------------------------Captured stderr call------------------------------ <br/>2021-07-19 20:43:56,939-[INFO]-my_log.py-api_log-日志信息:-------正在测试recharge模块里面第2条测试用例：正常投资
+2021-07-19 20:43:56,940-[INFO]-my_log.py-api_log-日志信息:测试数据是：{&#x27;CaseId&#x27;: 2, &#x27;Module&#x27;: &#x27;recharge&#x27;, &#x27;Title&#x27;: &#x27;正常投资&#x27;, &#x27;Method&#x27;: &#x27;GET&#x27;, &#x27;Url&#x27;: &#x27;http://192.168.153.129:8080/futureloan/mvc/api/member/bidLoan&#x27;, &#x27;Params&#x27;: &#x27;{&quot;mobilephone&quot;:&quot;18300070752&quot;,&quot;memberId&quot;:&quot;81&quot;,&quot;password&quot;:&quot;lys123456&quot;,&quot;loanId&quot;:26,&quot;amount&quot;:1000}&#x27;, &#x27;sql&#x27;: &#x27;{\&#x27;sql\&#x27;:\&#x27;select LeaveAmount from member where MobilePhone = &quot;18300070752&quot; \&#x27;}&#x27;, &#x27;ExpectedResult&#x27;: &#x27;{&quot;status&quot;:1,&quot;code&quot;:&quot;10001&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;竞标成功&quot;}&#x27;, &#x27;ActualResult&#x27;: &#x27;{&quot;status&quot;:1,&quot;code&quot;:&quot;10001&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;竞标成功&quot;}&#x27;}
+<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     api_log:my_log.py:29 -------正在测试recharge模块里面第2条测试用例：正常投资
+INFO     api_log:my_log.py:29 测试数据是：{&#x27;CaseId&#x27;: 2, &#x27;Module&#x27;: &#x27;recharge&#x27;, &#x27;Title&#x27;: &#x27;正常投资&#x27;, &#x27;Method&#x27;: &#x27;GET&#x27;, &#x27;Url&#x27;: &#x27;http://192.168.153.129:8080/futureloan/mvc/api/member/bidLoan&#x27;, &#x27;Params&#x27;: &#x27;{&quot;mobilephone&quot;:&quot;18300070752&quot;,&quot;memberId&quot;:&quot;81&quot;,&quot;password&quot;:&quot;lys123456&quot;,&quot;loanId&quot;:26,&quot;amount&quot;:1000}&#x27;, &#x27;sql&#x27;: &#x27;{\&#x27;sql\&#x27;:\&#x27;select LeaveAmount from member where MobilePhone = &quot;18300070752&quot; \&#x27;}&#x27;, &#x27;ExpectedResult&#x27;: &#x27;{&quot;status&quot;:1,&quot;code&quot;:&quot;10001&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;竞标成功&quot;}&#x27;, &#x27;ActualResult&#x27;: &#x27;{&quot;status&quot;:1,&quot;code&quot;:&quot;10001&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;竞标成功&quot;}&#x27;}<br/> ----------------------------Captured stderr teardown---------------------------- <br/>2021-07-19 20:43:57,645-[INFO]-my_log.py-api_log-日志信息:一条测试用例执行完毕
+<br/> -----------------------------Captured log teardown------------------------------ <br/>INFO     api_log:my_log.py:29 一条测试用例执行完毕<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_invest.py::TestCase::test_invest[case2]</td>
+          <td class="col-duration">0.27</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> ------------------------------Captured stderr call------------------------------ <br/>2021-07-19 20:43:57,802-[INFO]-my_log.py-api_log-日志信息:-------正在测试recharge模块里面第3条测试用例：不输入金额
+2021-07-19 20:43:57,804-[INFO]-my_log.py-api_log-日志信息:测试数据是：{&#x27;CaseId&#x27;: 3, &#x27;Module&#x27;: &#x27;recharge&#x27;, &#x27;Title&#x27;: &#x27;不输入金额&#x27;, &#x27;Method&#x27;: &#x27;GET&#x27;, &#x27;Url&#x27;: &#x27;http://192.168.153.129:8080/futureloan/mvc/api/member/bidLoan&#x27;, &#x27;Params&#x27;: &#x27;{&quot;memberId&quot;:&quot;287324&quot;,&quot;password&quot;:&quot;12345678&quot;,&quot; loanId&quot;:140029,&quot;amount&quot;:&quot;&quot;}&#x27;, &#x27;sql&#x27;: None, &#x27;ExpectedResult&#x27;: &#x27;{&quot;status&quot;:0,&quot;code&quot;:&quot;11003&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;参数错误:所有参数都不能为空&quot;}&#x27;, &#x27;ActualResult&#x27;: &#x27;{&quot;status&quot;:0,&quot;code&quot;:&quot;11003&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;参数错误:所有参数都不能为空&quot;}&#x27;}
+<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     api_log:my_log.py:29 -------正在测试recharge模块里面第3条测试用例：不输入金额
+INFO     api_log:my_log.py:29 测试数据是：{&#x27;CaseId&#x27;: 3, &#x27;Module&#x27;: &#x27;recharge&#x27;, &#x27;Title&#x27;: &#x27;不输入金额&#x27;, &#x27;Method&#x27;: &#x27;GET&#x27;, &#x27;Url&#x27;: &#x27;http://192.168.153.129:8080/futureloan/mvc/api/member/bidLoan&#x27;, &#x27;Params&#x27;: &#x27;{&quot;memberId&quot;:&quot;287324&quot;,&quot;password&quot;:&quot;12345678&quot;,&quot; loanId&quot;:140029,&quot;amount&quot;:&quot;&quot;}&#x27;, &#x27;sql&#x27;: None, &#x27;ExpectedResult&#x27;: &#x27;{&quot;status&quot;:0,&quot;code&quot;:&quot;11003&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;参数错误:所有参数都不能为空&quot;}&#x27;, &#x27;ActualResult&#x27;: &#x27;{&quot;status&quot;:0,&quot;code&quot;:&quot;11003&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;参数错误:所有参数都不能为空&quot;}&#x27;}<br/> ----------------------------Captured stderr teardown---------------------------- <br/>2021-07-19 20:43:57,986-[INFO]-my_log.py-api_log-日志信息:一条测试用例执行完毕
+<br/> -----------------------------Captured log teardown------------------------------ <br/>INFO     api_log:my_log.py:29 一条测试用例执行完毕<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_login.py::TestCase::test_login[case0]</td>
+          <td class="col-duration">0.23</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> ------------------------------Captured stderr call------------------------------ <br/>2021-07-19 20:43:58,191-[INFO]-my_log.py-api_log-日志信息:-----正在测试login模块里面第1条测试用例：正常登录,
+2021-07-19 20:43:58,193-[INFO]-my_log.py-api_log-日志信息:测试数据是：{&#x27;mobilephone&#x27;: &#x27;18300070752&#x27;, &#x27;pwd&#x27;: &#x27;lys123456&#x27;}
+2021-07-19 20:43:58,291-[INFO]-my_log.py-api_log-日志信息:实际结果是:{&#x27;status&#x27;: 1, &#x27;code&#x27;: &#x27;10001&#x27;, &#x27;data&#x27;: None, &#x27;msg&#x27;: &#x27;登录成功&#x27;}
+<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     api_log:my_log.py:29 -----正在测试login模块里面第1条测试用例：正常登录,
+INFO     api_log:my_log.py:29 测试数据是：{&#x27;mobilephone&#x27;: &#x27;18300070752&#x27;, &#x27;pwd&#x27;: &#x27;lys123456&#x27;}
+INFO     api_log:my_log.py:29 实际结果是:{&#x27;status&#x27;: 1, &#x27;code&#x27;: &#x27;10001&#x27;, &#x27;data&#x27;: None, &#x27;msg&#x27;: &#x27;登录成功&#x27;}<br/> ----------------------------Captured stderr teardown---------------------------- <br/>2021-07-19 20:43:58,293-[INFO]-my_log.py-api_log-日志信息:一条测试用例执行完毕
+<br/> -----------------------------Captured log teardown------------------------------ <br/>INFO     api_log:my_log.py:29 一条测试用例执行完毕<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_login.py::TestCase::test_login[case1]</td>
+          <td class="col-duration">0.19</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> ------------------------------Captured stderr call------------------------------ <br/>2021-07-19 20:43:58,550-[INFO]-my_log.py-api_log-日志信息:-----正在测试login模块里面第2条测试用例：不输入密码,
+2021-07-19 20:43:58,551-[INFO]-my_log.py-api_log-日志信息:测试数据是：{&#x27;mobilephone&#x27;: &#x27;18300070752&#x27;, &#x27;pwd&#x27;: &#x27;&#x27;}
+2021-07-19 20:43:58,643-[INFO]-my_log.py-api_log-日志信息:实际结果是:{&#x27;status&#x27;: 0, &#x27;code&#x27;: &#x27;20103&#x27;, &#x27;data&#x27;: None, &#x27;msg&#x27;: &#x27;密码不能为空&#x27;}
+<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     api_log:my_log.py:29 -----正在测试login模块里面第2条测试用例：不输入密码,
+INFO     api_log:my_log.py:29 测试数据是：{&#x27;mobilephone&#x27;: &#x27;18300070752&#x27;, &#x27;pwd&#x27;: &#x27;&#x27;}
+INFO     api_log:my_log.py:29 实际结果是:{&#x27;status&#x27;: 0, &#x27;code&#x27;: &#x27;20103&#x27;, &#x27;data&#x27;: None, &#x27;msg&#x27;: &#x27;密码不能为空&#x27;}<br/> ----------------------------Captured stderr teardown---------------------------- <br/>2021-07-19 20:43:58,645-[INFO]-my_log.py-api_log-日志信息:一条测试用例执行完毕
+<br/> -----------------------------Captured log teardown------------------------------ <br/>INFO     api_log:my_log.py:29 一条测试用例执行完毕<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_login.py::TestCase::test_login[case2]</td>
+          <td class="col-duration">0.20</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> ------------------------------Captured stderr call------------------------------ <br/>2021-07-19 20:43:58,851-[INFO]-my_log.py-api_log-日志信息:-----正在测试login模块里面第3条测试用例：输入错误的手机号,
+2021-07-19 20:43:58,852-[INFO]-my_log.py-api_log-日志信息:测试数据是：{&#x27;mobilephone&#x27;: &#x27;18300070759&#x27;, &#x27;pwd&#x27;: &#x27;123456&#x27;}
+2021-07-19 20:43:58,947-[INFO]-my_log.py-api_log-日志信息:实际结果是:{&#x27;status&#x27;: 0, &#x27;code&#x27;: &#x27;20111&#x27;, &#x27;data&#x27;: None, &#x27;msg&#x27;: &#x27;用户名或密码错误&#x27;}
+<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     api_log:my_log.py:29 -----正在测试login模块里面第3条测试用例：输入错误的手机号,
+INFO     api_log:my_log.py:29 测试数据是：{&#x27;mobilephone&#x27;: &#x27;18300070759&#x27;, &#x27;pwd&#x27;: &#x27;123456&#x27;}
+INFO     api_log:my_log.py:29 实际结果是:{&#x27;status&#x27;: 0, &#x27;code&#x27;: &#x27;20111&#x27;, &#x27;data&#x27;: None, &#x27;msg&#x27;: &#x27;用户名或密码错误&#x27;}<br/> ----------------------------Captured stderr teardown---------------------------- <br/>2021-07-19 20:43:58,949-[INFO]-my_log.py-api_log-日志信息:一条测试用例执行完毕
+<br/> -----------------------------Captured log teardown------------------------------ <br/>INFO     api_log:my_log.py:29 一条测试用例执行完毕<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_login.py::TestCase::test_login[case3]</td>
+          <td class="col-duration">0.26</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> ------------------------------Captured stderr call------------------------------ <br/>2021-07-19 20:43:59,262-[INFO]-my_log.py-api_log-日志信息:-----正在测试login模块里面第4条测试用例：输入错误的密码,
+2021-07-19 20:43:59,263-[INFO]-my_log.py-api_log-日志信息:测试数据是：{&#x27;mobilephone&#x27;: &#x27;18300070752&#x27;, &#x27;pwd&#x27;: &#x27;1234567&#x27;}
+2021-07-19 20:43:59,356-[INFO]-my_log.py-api_log-日志信息:实际结果是:{&#x27;status&#x27;: 0, &#x27;code&#x27;: &#x27;20111&#x27;, &#x27;data&#x27;: None, &#x27;msg&#x27;: &#x27;用户名或密码错误&#x27;}
+<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     api_log:my_log.py:29 -----正在测试login模块里面第4条测试用例：输入错误的密码,
+INFO     api_log:my_log.py:29 测试数据是：{&#x27;mobilephone&#x27;: &#x27;18300070752&#x27;, &#x27;pwd&#x27;: &#x27;1234567&#x27;}
+INFO     api_log:my_log.py:29 实际结果是:{&#x27;status&#x27;: 0, &#x27;code&#x27;: &#x27;20111&#x27;, &#x27;data&#x27;: None, &#x27;msg&#x27;: &#x27;用户名或密码错误&#x27;}<br/> ----------------------------Captured stderr teardown---------------------------- <br/>2021-07-19 20:43:59,358-[INFO]-my_log.py-api_log-日志信息:一条测试用例执行完毕
+<br/> -----------------------------Captured log teardown------------------------------ <br/>INFO     api_log:my_log.py:29 一条测试用例执行完毕<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_login.py::TestCase::test_login[case4]</td>
+          <td class="col-duration">0.17</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> ------------------------------Captured stderr call------------------------------ <br/>2021-07-19 20:43:59,628-[INFO]-my_log.py-api_log-日志信息:-----正在测试login模块里面第5条测试用例：不输入手机号,
+2021-07-19 20:43:59,630-[INFO]-my_log.py-api_log-日志信息:测试数据是：{&#x27;mobilephone&#x27;: &#x27;&#x27;, &#x27;pwd&#x27;: &#x27;123456&#x27;}
+2021-07-19 20:43:59,723-[INFO]-my_log.py-api_log-日志信息:实际结果是:{&#x27;status&#x27;: 0, &#x27;code&#x27;: &#x27;20103&#x27;, &#x27;data&#x27;: None, &#x27;msg&#x27;: &#x27;手机号不能为空&#x27;}
+<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     api_log:my_log.py:29 -----正在测试login模块里面第5条测试用例：不输入手机号,
+INFO     api_log:my_log.py:29 测试数据是：{&#x27;mobilephone&#x27;: &#x27;&#x27;, &#x27;pwd&#x27;: &#x27;123456&#x27;}
+INFO     api_log:my_log.py:29 实际结果是:{&#x27;status&#x27;: 0, &#x27;code&#x27;: &#x27;20103&#x27;, &#x27;data&#x27;: None, &#x27;msg&#x27;: &#x27;手机号不能为空&#x27;}<br/> ----------------------------Captured stderr teardown---------------------------- <br/>2021-07-19 20:43:59,724-[INFO]-my_log.py-api_log-日志信息:一条测试用例执行完毕
+<br/> -----------------------------Captured log teardown------------------------------ <br/>INFO     api_log:my_log.py:29 一条测试用例执行完毕<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_recharge.py::TestCase::test_recharge[case0]</td>
+          <td class="col-duration">0.26</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> ------------------------------Captured stderr call------------------------------ <br/>2021-07-19 20:43:59,873-[INFO]-my_log.py-api_log-日志信息:-------正在测试login模块里面第1条测试用例：正常登录
+2021-07-19 20:43:59,874-[INFO]-my_log.py-api_log-日志信息:测试数据是：{&#x27;CaseId&#x27;: 1, &#x27;Module&#x27;: &#x27;login&#x27;, &#x27;Title&#x27;: &#x27;正常登录&#x27;, &#x27;Method&#x27;: &#x27;GET&#x27;, &#x27;Url&#x27;: &#x27;http://192.168.153.129:8080/futureloan/mvc/api/member/login&#x27;, &#x27;Params&#x27;: &#x27;{&quot;mobilephone&quot;:&quot;18300070752&quot;,&quot;pwd&quot;:&quot;lys123456&quot;}&#x27;, &#x27;sql&#x27;: None, &#x27;ExpectedResult&#x27;: &#x27;{&quot;status&quot;:1,&quot;code&quot;:&quot;10001&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;登录成功&quot;}&#x27;, &#x27;ActualResult&#x27;: &#x27;{&quot;status&quot;:1,&quot;code&quot;:&quot;10001&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;登录成功&quot;}&#x27;}
+2021-07-19 20:43:59,972-[INFO]-my_log.py-api_log-日志信息:实际结果是:{&#x27;status&#x27;: 1, &#x27;code&#x27;: &#x27;10001&#x27;, &#x27;data&#x27;: None, &#x27;msg&#x27;: &#x27;登录成功&#x27;}
+<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     api_log:my_log.py:29 -------正在测试login模块里面第1条测试用例：正常登录
+INFO     api_log:my_log.py:29 测试数据是：{&#x27;CaseId&#x27;: 1, &#x27;Module&#x27;: &#x27;login&#x27;, &#x27;Title&#x27;: &#x27;正常登录&#x27;, &#x27;Method&#x27;: &#x27;GET&#x27;, &#x27;Url&#x27;: &#x27;http://192.168.153.129:8080/futureloan/mvc/api/member/login&#x27;, &#x27;Params&#x27;: &#x27;{&quot;mobilephone&quot;:&quot;18300070752&quot;,&quot;pwd&quot;:&quot;lys123456&quot;}&#x27;, &#x27;sql&#x27;: None, &#x27;ExpectedResult&#x27;: &#x27;{&quot;status&quot;:1,&quot;code&quot;:&quot;10001&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;登录成功&quot;}&#x27;, &#x27;ActualResult&#x27;: &#x27;{&quot;status&quot;:1,&quot;code&quot;:&quot;10001&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;登录成功&quot;}&#x27;}
+INFO     api_log:my_log.py:29 实际结果是:{&#x27;status&#x27;: 1, &#x27;code&#x27;: &#x27;10001&#x27;, &#x27;data&#x27;: None, &#x27;msg&#x27;: &#x27;登录成功&#x27;}<br/> ----------------------------Captured stderr teardown---------------------------- <br/>2021-07-19 20:43:59,974-[INFO]-my_log.py-api_log-日志信息:一条测试用例执行完毕
+<br/> -----------------------------Captured log teardown------------------------------ <br/>INFO     api_log:my_log.py:29 一条测试用例执行完毕<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_recharge.py::TestCase::test_recharge[case2]</td>
+          <td class="col-duration">0.20</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> ------------------------------Captured stderr call------------------------------ <br/>2021-07-19 20:44:00,988-[INFO]-my_log.py-api_log-日志信息:-------正在测试recharge模块里面第3条测试用例：不输入金额
+2021-07-19 20:44:00,989-[INFO]-my_log.py-api_log-日志信息:测试数据是：{&#x27;CaseId&#x27;: 3, &#x27;Module&#x27;: &#x27;recharge&#x27;, &#x27;Title&#x27;: &#x27;不输入金额&#x27;, &#x27;Method&#x27;: &#x27;GET&#x27;, &#x27;Url&#x27;: &#x27;http://192.168.153.129:8080/futureloan/mvc/api/member/recharge&#x27;, &#x27;Params&#x27;: &#x27;{&quot;mobilephone&quot;:&quot;18300070752&quot;,&quot;amount&quot;:&quot;&quot;}&#x27;, &#x27;sql&#x27;: None, &#x27;ExpectedResult&#x27;: &#x27;{&quot;status&quot;:0,&quot;code&quot;:&quot;20115&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;请输入金额&quot;}&#x27;, &#x27;ActualResult&#x27;: &#x27;{&quot;status&quot;:0,&quot;code&quot;:&quot;20115&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;请输入金额&quot;}&#x27;}
+2021-07-19 20:44:01,078-[INFO]-my_log.py-api_log-日志信息:实际结果是:{&#x27;status&#x27;: 0, &#x27;code&#x27;: &#x27;20115&#x27;, &#x27;data&#x27;: None, &#x27;msg&#x27;: &#x27;请输入金额&#x27;}
+<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     api_log:my_log.py:29 -------正在测试recharge模块里面第3条测试用例：不输入金额
+INFO     api_log:my_log.py:29 测试数据是：{&#x27;CaseId&#x27;: 3, &#x27;Module&#x27;: &#x27;recharge&#x27;, &#x27;Title&#x27;: &#x27;不输入金额&#x27;, &#x27;Method&#x27;: &#x27;GET&#x27;, &#x27;Url&#x27;: &#x27;http://192.168.153.129:8080/futureloan/mvc/api/member/recharge&#x27;, &#x27;Params&#x27;: &#x27;{&quot;mobilephone&quot;:&quot;18300070752&quot;,&quot;amount&quot;:&quot;&quot;}&#x27;, &#x27;sql&#x27;: None, &#x27;ExpectedResult&#x27;: &#x27;{&quot;status&quot;:0,&quot;code&quot;:&quot;20115&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;请输入金额&quot;}&#x27;, &#x27;ActualResult&#x27;: &#x27;{&quot;status&quot;:0,&quot;code&quot;:&quot;20115&quot;,&quot;data&quot;:null,&quot;msg&quot;:&quot;请输入金额&quot;}&#x27;}
+INFO     api_log:my_log.py:29 实际结果是:{&#x27;status&#x27;: 0, &#x27;code&#x27;: &#x27;20115&#x27;, &#x27;data&#x27;: None, &#x27;msg&#x27;: &#x27;请输入金额&#x27;}<br/> ----------------------------Captured stderr teardown---------------------------- <br/>2021-07-19 20:44:01,080-[INFO]-my_log.py-api_log-日志信息:一条测试用例执行完毕
+<br/> -----------------------------Captured log teardown------------------------------ <br/>INFO     api_log:my_log.py:29 一条测试用例执行完毕<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_register.py::TestCase::test_register[case0]</td>
+          <td class="col-duration">0.47</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> ------------------------------Captured stderr call------------------------------ <br/>2021-07-19 20:44:01,349-[INFO]-my_log.py-api_log-日志信息:-----正在测试register模块里面第1条测试用例：正常注册,
+2021-07-19 20:44:01,350-[INFO]-my_log.py-api_log-日志信息:测试数据是：{&#x27;mobilephone&#x27;:&#x27;18300071088&#x27;,&#x27;pwd&#x27;:&#x27;12345678&#x27;,&#x27;regname&#x27;:&#x27;胡漢三&#x27;}
+2021-07-19 20:44:01,624-[INFO]-my_log.py-api_log-日志信息:实际结果是:{&#x27;status&#x27;: 1, &#x27;code&#x27;: &#x27;10001&#x27;, &#x27;data&#x27;: None, &#x27;msg&#x27;: &#x27;注册成功&#x27;}
+<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     api_log:my_log.py:29 -----正在测试register模块里面第1条测试用例：正常注册,
+INFO     api_log:my_log.py:29 测试数据是：{&#x27;mobilephone&#x27;:&#x27;18300071088&#x27;,&#x27;pwd&#x27;:&#x27;12345678&#x27;,&#x27;regname&#x27;:&#x27;胡漢三&#x27;}
+INFO     api_log:my_log.py:29 实际结果是:{&#x27;status&#x27;: 1, &#x27;code&#x27;: &#x27;10001&#x27;, &#x27;data&#x27;: None, &#x27;msg&#x27;: &#x27;注册成功&#x27;}<br/> ----------------------------Captured stderr teardown---------------------------- <br/>2021-07-19 20:44:01,625-[INFO]-my_log.py-api_log-日志信息:一条测试用例执行完毕
+<br/> -----------------------------Captured log teardown------------------------------ <br/>INFO     api_log:my_log.py:29 一条测试用例执行完毕<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_register.py::TestCase::test_register[case1]</td>
+          <td class="col-duration">0.16</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> ------------------------------Captured stderr call------------------------------ <br/>2021-07-19 20:44:01,995-[INFO]-my_log.py-api_log-日志信息:-----正在测试register模块里面第2条测试用例：不输入手机号,
+2021-07-19 20:44:01,996-[INFO]-my_log.py-api_log-日志信息:测试数据是：{&#x27;mobilephone&#x27;:&#x27;&#x27;,&#x27;pwd&#x27;:&#x27;12345679&#x27;}
+2021-07-19 20:44:02,087-[INFO]-my_log.py-api_log-日志信息:实际结果是:{&#x27;status&#x27;: 0, &#x27;code&#x27;: &#x27;20103&#x27;, &#x27;data&#x27;: None, &#x27;msg&#x27;: &#x27;手机号不能为空&#x27;}
+<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     api_log:my_log.py:29 -----正在测试register模块里面第2条测试用例：不输入手机号,
+INFO     api_log:my_log.py:29 测试数据是：{&#x27;mobilephone&#x27;:&#x27;&#x27;,&#x27;pwd&#x27;:&#x27;12345679&#x27;}
+INFO     api_log:my_log.py:29 实际结果是:{&#x27;status&#x27;: 0, &#x27;code&#x27;: &#x27;20103&#x27;, &#x27;data&#x27;: None, &#x27;msg&#x27;: &#x27;手机号不能为空&#x27;}<br/> ----------------------------Captured stderr teardown---------------------------- <br/>2021-07-19 20:44:02,089-[INFO]-my_log.py-api_log-日志信息:一条测试用例执行完毕
+<br/> -----------------------------Captured log teardown------------------------------ <br/>INFO     api_log:my_log.py:29 一条测试用例执行完毕<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_register.py::TestCase::test_register[case2]</td>
+          <td class="col-duration">0.15</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> ------------------------------Captured stderr call------------------------------ <br/>2021-07-19 20:44:02,301-[INFO]-my_log.py-api_log-日志信息:-----正在测试register模块里面第3条测试用例：不输入密码,
+2021-07-19 20:44:02,302-[INFO]-my_log.py-api_log-日志信息:测试数据是：{&#x27;mobilephone&#x27;:&#x27;18300070752&#x27;,&#x27;pwd&#x27;:&#x27;&#x27;}
+2021-07-19 20:44:02,392-[INFO]-my_log.py-api_log-日志信息:实际结果是:{&#x27;status&#x27;: 0, &#x27;code&#x27;: &#x27;20103&#x27;, &#x27;data&#x27;: None, &#x27;msg&#x27;: &#x27;密码不能为空&#x27;}
+<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     api_log:my_log.py:29 -----正在测试register模块里面第3条测试用例：不输入密码,
+INFO     api_log:my_log.py:29 测试数据是：{&#x27;mobilephone&#x27;:&#x27;18300070752&#x27;,&#x27;pwd&#x27;:&#x27;&#x27;}
+INFO     api_log:my_log.py:29 实际结果是:{&#x27;status&#x27;: 0, &#x27;code&#x27;: &#x27;20103&#x27;, &#x27;data&#x27;: None, &#x27;msg&#x27;: &#x27;密码不能为空&#x27;}<br/> ----------------------------Captured stderr teardown---------------------------- <br/>2021-07-19 20:44:02,394-[INFO]-my_log.py-api_log-日志信息:一条测试用例执行完毕
+<br/> -----------------------------Captured log teardown------------------------------ <br/>INFO     api_log:my_log.py:29 一条测试用例执行完毕<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_register.py::TestCase::test_register[case3]</td>
+          <td class="col-duration">0.16</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> ------------------------------Captured stderr call------------------------------ <br/>2021-07-19 20:44:02,573-[INFO]-my_log.py-api_log-日志信息:-----正在测试register模块里面第4条测试用例：输入5位密码,
+2021-07-19 20:44:02,575-[INFO]-my_log.py-api_log-日志信息:测试数据是：{&#x27;mobilephone&#x27;:&#x27;18300070752&#x27;,&#x27;pwd&#x27;:&#x27;12345&#x27;}
+2021-07-19 20:44:02,668-[INFO]-my_log.py-api_log-日志信息:实际结果是:{&#x27;status&#x27;: 0, &#x27;code&#x27;: &#x27;20108&#x27;, &#x27;data&#x27;: None, &#x27;msg&#x27;: &#x27;密码长度必须为6~18&#x27;}
+<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     api_log:my_log.py:29 -----正在测试register模块里面第4条测试用例：输入5位密码,
+INFO     api_log:my_log.py:29 测试数据是：{&#x27;mobilephone&#x27;:&#x27;18300070752&#x27;,&#x27;pwd&#x27;:&#x27;12345&#x27;}
+INFO     api_log:my_log.py:29 实际结果是:{&#x27;status&#x27;: 0, &#x27;code&#x27;: &#x27;20108&#x27;, &#x27;data&#x27;: None, &#x27;msg&#x27;: &#x27;密码长度必须为6~18&#x27;}<br/> ----------------------------Captured stderr teardown---------------------------- <br/>2021-07-19 20:44:02,670-[INFO]-my_log.py-api_log-日志信息:一条测试用例执行完毕
+<br/> -----------------------------Captured log teardown------------------------------ <br/>INFO     api_log:my_log.py:29 一条测试用例执行完毕<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_register.py::TestCase::test_register[case4]</td>
+          <td class="col-duration">0.23</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> ------------------------------Captured stderr call------------------------------ <br/>2021-07-19 20:44:02,806-[INFO]-my_log.py-api_log-日志信息:-----正在测试register模块里面第5条测试用例：输入19位密码,
+2021-07-19 20:44:02,807-[INFO]-my_log.py-api_log-日志信息:测试数据是：{&#x27;mobilephone&#x27;:&#x27;18300070752&#x27;,&#x27;pwd&#x27;:&#x27;1234568290123456789&#x27;}
+2021-07-19 20:44:02,899-[INFO]-my_log.py-api_log-日志信息:实际结果是:{&#x27;status&#x27;: 0, &#x27;code&#x27;: &#x27;20108&#x27;, &#x27;data&#x27;: None, &#x27;msg&#x27;: &#x27;密码长度必须为6~18&#x27;}
+<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     api_log:my_log.py:29 -----正在测试register模块里面第5条测试用例：输入19位密码,
+INFO     api_log:my_log.py:29 测试数据是：{&#x27;mobilephone&#x27;:&#x27;18300070752&#x27;,&#x27;pwd&#x27;:&#x27;1234568290123456789&#x27;}
+INFO     api_log:my_log.py:29 实际结果是:{&#x27;status&#x27;: 0, &#x27;code&#x27;: &#x27;20108&#x27;, &#x27;data&#x27;: None, &#x27;msg&#x27;: &#x27;密码长度必须为6~18&#x27;}<br/> ----------------------------Captured stderr teardown---------------------------- <br/>2021-07-19 20:44:02,901-[INFO]-my_log.py-api_log-日志信息:一条测试用例执行完毕
+<br/> -----------------------------Captured log teardown------------------------------ <br/>INFO     api_log:my_log.py:29 一条测试用例执行完毕<br/></div></td></tr></tbody></table></body></html>

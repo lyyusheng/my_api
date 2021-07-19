@@ -1,0 +1,2 @@
+[32mINFO    [0m api_log:my_log.py:29 -----正在测试register模块里面第2条测试用例：不输入手机号,
+[32mINFO    [0m api_log:my_log.py:29 测试数据是：{'mobilephone':'','pwd':'12345679'}

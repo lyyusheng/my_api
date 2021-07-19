@@ -1,0 +1,4 @@
+INFO     api_log:my_log.py:29 -----正在测试login模块里面第1条测试用例：正常登录,
+INFO     api_log:my_log.py:29 测试数据是：{'mobilephone': '18300070752', 'pwd': 'lys123456'}
+INFO     api_log:my_log.py:29 实际结果是:{'status': 1, 'code': '10001', 'data': None, 'msg': '登录成功'}
+INFO     api_log:my_log.py:29 一条测试用例执行完毕
